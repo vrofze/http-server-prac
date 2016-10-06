@@ -1,4 +1,5 @@
 #ifndef SERVER_BASE_HPP
+#define SERVER_BASE_HPP
 
 
 #include <unordered_map>
@@ -38,16 +39,17 @@ namespace FrostWeb
       num_threads(num_threads) { }
 
     // start server
-    void start();
+    void start(unsigned short);
 
   protected:
-    std::vector<resource_type::iterator> all_resources;
 
     // io_service
     boost::asio::io_service m_io_service;
     // endpoint for construct a accepter
     boost::asio::ip::tcp::endpoint endpoint;
     boost::asio::ip::tcp::acceptor acceptor;
+
+    std::vector<resource_type::iterator> all_resources;
 
     // thread pool
     size_t num_threads;
@@ -66,25 +68,28 @@ namespace FrostWeb
   class Server : public ServerBase<socket_type> { };
 
   template<typename socket_type>
-  void ServerBase<socket_type>::start()
+  void ServerBase<socket_type>::start(unsigned short port)
   {
     for(auto it=resource.begin(); it!=resource.end(); ++it){
       all_resources.push_back(it);
     }
-    for(auto it=default_resource.begin(); it!=default_resource(); ++it){
+    for(auto it=default_resource.begin(); it!=default_resource.end(); ++it){
       all_resources.push_back(it);
     }
 
     accept();
 
     // add threads
+    std::cout << "Server start at port: " << port << std::endl;
     for(size_t c=1; c<num_threads; c++){
+      std::cout << "run server in thread: " << c << std::endl;
       threads.emplace_back([this](){
           m_io_service.run();
         });
     }
 
     // main thread
+    std::cout << "run server in thread: main" << std::endl;
     m_io_service.run();
 
     // wait for all threads to complete
@@ -95,6 +100,8 @@ namespace FrostWeb
   template<typename socket_type>
   Request ServerBase<socket_type>::parse_request(std::istream& stream) const
   {
+    std::cout << "----------start parse request----------" << std::endl;
+
     Request request;
     std::regex e("^([^ ]*) ([^ ]*) HTTP/([^ ]*)$");
     std::smatch sub_match;
@@ -103,22 +110,30 @@ namespace FrostWeb
     getline(stream, line);
     line.pop_back();
 
+    std::cout << "dell with url:" << std::endl;
     if(std::regex_match(line, sub_match, e)){
+      int i = 0;
+      for(auto &sub: sub_match)
+        std::cout << "url" << i++ << ": " << sub << std::endl;
+      std::cout << std::endl;
       request.method = sub_match[1];
-      request.method = sub_match[2];
+      request.path = sub_match[2];
       request.http_version = sub_match[3];
 
+      std::cout << "dell with header:" << std::endl;
       bool matched;
-      e="^([^:]*): ?(.*)$";
+      e = "^([^:]*): ?(.*)$";
       do{
         getline(stream, line);
         line.pop_back();
         matched = std::regex_match(line, sub_match, e);
         if(matched){
           request.header[sub_match[1]] = sub_match[2];
+          std::cout << sub_match[1] << " : " << sub_match[2] << std::endl;
         }
       } while(matched==true);
     }
+    std::cout << "----------parse request ended---------" << std::endl << std::endl;
     return request;
   }
 
@@ -160,10 +175,14 @@ namespace FrostWeb
   template<typename socket_type>
   void ServerBase<socket_type>::respond(std::shared_ptr<socket_type> socket, std::shared_ptr<Request> request) const
   {
+    std::cout << "-----------make respose----------" << std::endl;
     for(auto res_it: all_resources){
+      std::cout << "match pattern: " << res_it->first << std::endl;
       std::regex e(res_it->first);
       std::smatch sm_res;
+      std::cout << "match path:" << request->path << std::endl;
       if(std::regex_match(request->path, sm_res, e)){
+        std::cout << "match method:" << request->method << std::endl;
         if(res_it->second.count(request->method)>0){
           request->path_match = move(sm_res);
 
@@ -176,10 +195,14 @@ namespace FrostWeb
                                      if(!ec && stof(request->http_version)>1.05)
                                        process_request_and_respond(socket);
                                    });
+          std::cout << "----------make response end---------" << std::endl << std::endl;
           return;
         }
+        std::cout << "# filed match method:" << request->method << std::endl;
       }
+      std::cout << "# filed match path: " << request->path << std::endl;
     }
+    std::cout << "# filed match pattern" << std::endl;
   }
 }
 

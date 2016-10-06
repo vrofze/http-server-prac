@@ -19,7 +19,10 @@ namespace FrostWeb
 
       acceptor.async_accept(*socket, [this, socket](const boost::system::error_code& ec){
           accept();
-          if(!ec) process_request_and_respond(socket);
+          if(!ec) {
+            process_request_and_respond(socket);
+
+          }
         });
     }
   };
