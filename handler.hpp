@@ -8,6 +8,8 @@ template<typename SERVER_TYPE>
 void start_server(SERVER_TYPE &server, unsigned short port)
 {
 
+  //add resources use server.resource[][] = [](){ }(lamdba)
+  // resource pattern /string/ POST
   server.resource["^/string/?$"]["POST"] = [](ostream& response, Request request){
     cout << "processing in pattern: /string/ POST" << endl;
     //read string from *request.content
@@ -20,6 +22,7 @@ void start_server(SERVER_TYPE &server, unsigned short port)
     cout << "process end" << endl;
   };
 
+  // resource pattern /info/ GET
   server.resource["^/info/?$"]["GET"] = [](ostream& response, Request& request){
     cout << "processing in pattern: /info/ GET" << endl;
     stringstream content_stream;
@@ -37,6 +40,7 @@ void start_server(SERVER_TYPE &server, unsigned short port)
     cout << "process end" << endl;
   };
 
+  // resource pattern /match/123abcABC GET
   server.resource["^/match/([0-9a-zA-Z]+)/?$"]["GET"] = [](ostream& response, Request& request){
     cout << "processing in match/123abcABC GET" << endl;
     string number = request.path_match[1];
@@ -44,6 +48,7 @@ void start_server(SERVER_TYPE &server, unsigned short port)
     cout << "process end" << endl;
   };
 
+  // default resource pattern
   server.default_resource["^/?(.*)$"]["GET"] = [](ostream& response, Request& request){
     cout << "processing in default resource GET" << endl;
     string filename = "www/";
@@ -82,5 +87,6 @@ void start_server(SERVER_TYPE &server, unsigned short port)
     cout << "process end" << endl;
   };
 
+  // start server
   server.start(port);
 }
